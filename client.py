@@ -52,11 +52,12 @@ class MCPClient:
         } for tool in response.tools]
 
         # Initial Claude API call
-        response = self.anthropic.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1000,
+        response = self.llm_client.chat.completions.create(
+            model=get_config("model"),
+            max_tokens=get_config("max_tokens") or 8096,
             messages=messages,
-            tools=available_tools
+            tools=available_tools,
+            tool_choice="auto"
         )
 
         # Process response and handle tool calls
@@ -117,18 +118,13 @@ class MCPClient:
         """Clean up resources"""
         await self.exit_stack.aclose()
 
-async def main():
-    if len(sys.argv) < 2:
-        print("Usage: python client.py <path_to_server_script>")
-        sys.exit(1)
-        
+async def main(): 
     client = MCPClient()
     try:
-        await client.connect_to_server(sys.argv[1])
+        await client.connect_to_server()
         await client.chat_loop()
     finally:
         await client.cleanup()
 
 if __name__ == "__main__":
-    import sys
     asyncio.run(main())
