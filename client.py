@@ -2,9 +2,9 @@ import asyncio
 from typing import Optional
 from contextlib import AsyncExitStack
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-from utils import connect_to_stdio_server, get_config,create_llm_client
+from mcp import ClientSession
+
+from utils import connect_to_stdio_server,connect_to_sse_server,connect_to_streamablehttp_server, get_config,create_llm_client
 
 class MCPClient:
     def __init__(self):
@@ -20,10 +20,12 @@ class MCPClient:
         if get_config("mcp_type")=="stdio":
             server_script_path = get_config("server_script_path")
             self.session = await connect_to_stdio_server(server_script_path,self.exit_stack)
-        elif get_config("mcp_type")=="llm":
-            pass
-        elif get_config("mcp_type")=="llm":
-            pass
+        elif get_config("mcp_type")=="sse":
+            url=get_config("url")
+            self.session = await connect_to_sse_server(url,self.exit_stack)
+        elif get_config("mcp_type")=="streamablehttp":
+            url=get_config("url")
+            self.session = await connect_to_streamablehttp_server(url,self.exit_stack)
         else:
             raise ValueError("Invalid mcp_type")
         

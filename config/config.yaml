@@ -1,6 +1,6 @@
 model: Qwen/Qwen2.5-72B-Instruct
 base_url: https://api-inference.modelscope.cn/v1/
-api_key: ms-22993d5d-d2ac-4514-9ba4-f72b5139ba50
-mcp_type: sse # sse | stdio | streamable
+api_key:
+mcp_type: sse # sse | stdio | streamablehttp
 mcp_url: https://api-inference.modelscope.cn/v1/sse # 当mcp_type为sse,streamable时，请设置此参数
 server_script_path: ./server.py #当mcp_type为stdio时，请设置此参数

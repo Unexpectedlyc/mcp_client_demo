@@ -64,6 +64,19 @@ async def connect_to_stdio_server(server_script_path: str,exit_stack):
         return session
         
 
+async def connect_to_sse_server(url: str,exit_stack):
+    sse_transport = await exit_stack.enter_async_context(sse_client(url))
+    sse, write = sse_transport
+    session = await exit_stack.enter_async_context(ClientSession(sse, write))
+        
+    return session
+
+async def connect_to_streamablehttp_server(url: str,exit_stack):
+    streamablehttp_transport = await exit_stack.enter_async_context(streamablehttp_client(url))
+    streamablehttp, write = streamablehttp_transport
+    session = await exit_stack.enter_async_context(ClientSession(streamablehttp, write))
+        
+    return session
 
 if __name__=='__main__':
     print(get_config("base_url"))
