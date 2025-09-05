@@ -21,10 +21,10 @@ class MCPClient:
             server_script_path = get_config("server_script_path")
             self.session = await connect_to_stdio_server(server_script_path,self.exit_stack)
         elif get_config("mcp_type")=="sse":
-            url=get_config("url")
+            url=get_config("mcp_url")
             self.session = await connect_to_sse_server(url,self.exit_stack)
         elif get_config("mcp_type")=="streamablehttp":
-            url=get_config("url")
+            url=get_config("mcp_url")
             self.session = await connect_to_streamablehttp_server(url,self.exit_stack)
         else:
             raise ValueError("Invalid mcp_type")
@@ -57,7 +57,6 @@ class MCPClient:
             max_tokens=get_config("max_tokens") or 8096,
             messages=messages,
             tools=available_tools,
-            tool_choice="auto"
         )
 
         # Process response and handle tool calls
