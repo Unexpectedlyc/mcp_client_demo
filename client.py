@@ -51,12 +51,13 @@ class MCPClient:
             "input_schema": tool.inputSchema
         } for tool in response.tools]
 
-        # Initial Claude API call
+        # Initial API call
         response = self.llm_client.chat.completions.create(
             model=get_config("model"),
             max_tokens=get_config("max_tokens") or 8096,
             messages=messages,
             tools=available_tools,
+            tool_choice="auto",
         )
 
         # Process response and handle tool calls
