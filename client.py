@@ -127,8 +127,7 @@ async def main():
     client = MCPClient()
     try:
         await client.connect_to_server()
-        a = await client.process_query("获取当前时间")
-        print("\n" + a)
+        await client.chat_loop()
     finally:
         await client.cleanup()
 
