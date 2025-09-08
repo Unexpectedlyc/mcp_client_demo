@@ -1,10 +1,18 @@
 import asyncio
+import json
 from typing import Optional
 from contextlib import AsyncExitStack
 
 from mcp import ClientSession
 
-from utils import connect_to_stdio_server,connect_to_sse_server,connect_to_streamablehttp_server, get_config,create_llm_client
+from utils import (
+    connect_to_stdio_server,
+    connect_to_sse_server,
+    connect_to_streamablehttp_server,
+    get_config,
+    create_llm_client,
+)
+
 
 class MCPClient:
     def __init__(self):
@@ -14,21 +22,21 @@ class MCPClient:
         self.llm_client = create_llm_client()
 
     async def connect_to_server(self):
-        """Connect to an MCP server
-        
-        """
-        if get_config("mcp_type")=="stdio":
+        """Connect to an MCP server"""
+        if get_config("mcp_type") == "stdio":
             server_script_path = get_config("server_script_path")
-            self.session = await connect_to_stdio_server(server_script_path,self.exit_stack)
-        elif get_config("mcp_type")=="sse":
-            url=get_config("mcp_url")
-            self.session = await connect_to_sse_server(url,self.exit_stack)
-        elif get_config("mcp_type")=="streamablehttp":
-            url=get_config("mcp_url")
-            self.session = await connect_to_streamablehttp_server(url,self.exit_stack)
+            self.session = await connect_to_stdio_server(
+                server_script_path, self.exit_stack
+            )
+        elif get_config("mcp_type") == "sse":
+            url = get_config("mcp_url")
+            self.session = await connect_to_sse_server(url, self.exit_stack)
+        elif get_config("mcp_type") == "streamablehttp":
+            url = get_config("mcp_url")
+            self.session = await connect_to_streamablehttp_server(url, self.exit_stack)
         else:
             raise ValueError("Invalid mcp_type")
-        
+
         await self.session.initialize()
         # List available tools
         response = await self.session.list_tools()
@@ -37,19 +45,20 @@ class MCPClient:
 
     async def process_query(self, query: str) -> str:
         """Process a query using Claude and available tools"""
-        messages = [
-            {
-                "role": "user",
-                "content": query
-            }
-        ]
+        messages = [{"role": "user", "content": query}]
 
         response = await self.session.list_tools()
-        available_tools = [{ 
-            "name": tool.name,
-            "description": tool.description,
-            "input_schema": tool.inputSchema
-        } for tool in response.tools]
+        available_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.inputSchema,
+                },
+            }
+            for tool in response.tools
+        ]
 
         # Initial API call
         response = self.llm_client.chat.completions.create(
@@ -62,70 +71,67 @@ class MCPClient:
 
         # Process response and handle tool calls
         final_text = []
+        # Extract the function information of the first tool call from the response object, including the function name and arguments
+        tool_calls = response.choices[0].message.tool_calls
+        if tool_calls is not None:
+            messages.append(
+                {"role": "assistant", "content": response.choices[0].message.content}
+            )
+            for function_call in tool_calls:
+                function_call = function_call.model_dump()
+                function_call = function_call.get("function")
+                # Get the name of the tool function
+                tool_name = function_call.get("name")
+                # Parse the arguments of the tool function, converting the JSON string to a Python object
+                tool_args = json.loads(function_call.get("arguments"))
+                # Make API call to tool
+                tool_response = await self.session.call_tool(tool_name, tool_args)
+                final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
+                messages.append({"role": "user", "content": tool_response.content})
+        else:
+            final_text.append(response.choices[0].message.content)
+        # Get next response
+        response = self.llm_client.chat.completions.create(
+            model=get_config("model"),
+            max_tokens=get_config("max_tokens") or 8096,
+            messages=messages,
+        )
 
-        # TODO 调用魔搭api时会报错工具josn 格式错误，需要进一步排查
-        # for content in response.content:
-        #     if content.type == 'text':
-        #         final_text.append(content.text)
-        #     elif content.type == 'tool_use':
-        #         tool_name = content.name
-        #         tool_args = content.input
-                
-        #         # Execute tool call
-        #         result = await self.session.call_tool(tool_name, tool_args)
-        #         final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
-
-        #         # Continue conversation with tool results
-        #         if hasattr(content, 'text') and content.text:
-        #             messages.append({
-        #               "role": "assistant",
-        #               "content": content.text
-        #             })
-        #         messages.append({
-        #             "role": "user", 
-        #             "content": result.content
-        #         })
-
-        #         # Get next response from Claude
-        #         response = self.anthropic.messages.create(
-        #             model="claude-3-5-sonnet-20241022",
-        #             max_tokens=1000,
-        #             messages=messages,
-        #         )
-
-        #         final_text.append(response.content[0].text)
-
+        final_text.append(response.choices[0].message.content)
         return "\n".join(final_text)
 
     async def chat_loop(self):
         """Run an interactive chat loop"""
         print("\nMCP Client Started!")
         print("Type your queries or 'quit' to exit.")
-        
+
         while True:
             try:
                 query = input("\nQuery: ").strip()
-                
-                if query.lower() == 'quit':
+
+                if query.lower() == "quit":
                     break
-                    
+
                 response = await self.process_query(query)
                 print("\n" + response)
-                    
+
             except Exception as e:
                 print(f"\nError: {str(e)}")
-    
+
     async def cleanup(self):
         """Clean up resources"""
         await self.exit_stack.aclose()
 
-async def main(): 
+
+async def main():
     client = MCPClient()
     try:
         await client.connect_to_server()
-        await client.chat_loop()
+        a = await client.process_query("获取当前时间")
+        print("\n" + a)
     finally:
         await client.cleanup()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
