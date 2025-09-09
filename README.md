@@ -41,7 +41,7 @@ server_script_path: ./server.py # 当mcp_type为stdio时设置此参数 💻
 
 ## 使用方法 🎯
 
-运行 [client.py](file://d:\workplace\mcp_client_demo\client.py) 后，程序会自动连接到配置的 MCP 服务器，并显示可用工具列表。用户可以输入自然语言查询，系统会自动调用相应的工具并返回结果。✅
+运行 client.py 后，程序会自动连接到配置的 MCP 服务器，并显示可用工具列表。用户可以输入自然语言查询，系统会自动调用相应的工具并返回结果。✅
 
 输入 `quit` 退出程序。👋
 
@@ -50,4 +50,3 @@ server_script_path: ./server.py # 当mcp_type为stdio时设置此参数 💻
 - client.py: 主客户端程序，处理与 MCP 服务器的交互和用户对话 💬
 - utils.py: 工具函数集合，包括配置读取、LLM 客户端创建和不同连接方式的实现 🔧
 - `config/config.yaml`: 配置文件，包含模型参数和连接设置 ⚙️
-
